@@ -9,7 +9,7 @@
 #include "axonfs.h"
 
 /*
- * External request handlers (defined in handlers.c)
+ * External request handlers (defined in handlers.c and files.c)
  */
 extern void read_status(Req *r);
 extern void read_ctl(Req *r);
@@ -17,6 +17,12 @@ extern void write_ctl(Req *r, Axon *axon);
 extern void read_entry(Req *r, Axon *axon);
 extern void write_search_query(Req *r, Axon *axon);
 extern void read_search_results(Req *r, Axon *axon);
+
+/* Multi-mind status handlers */
+extern void read_mind_status(Req *r, MindType mind_type);
+extern void read_inbox_status(Req *r, Axon *axon);
+extern void read_minds_status(Req *r);
+extern void read_consensus_status(Req *r, Axon *axon);
 
 /*
  * Attach handler
@@ -78,6 +84,41 @@ fs_read(Req *r)
         return;
     }
 
+    /* Multi-mind status files */
+    if(strcmp(aux, "literal_status") == 0) {
+        read_mind_status(r, MIND_LITERAL);
+        return;
+    }
+    if(strcmp(aux, "skeptic_status") == 0) {
+        read_mind_status(r, MIND_SKEPTIC);
+        return;
+    }
+    if(strcmp(aux, "synthesizer_status") == 0) {
+        read_mind_status(r, MIND_SYNTHESIZER);
+        return;
+    }
+    if(strcmp(aux, "pattern_status") == 0) {
+        read_mind_status(r, MIND_PATTERN_MATCHER);
+        return;
+    }
+    if(strcmp(aux, "questioner_status") == 0) {
+        read_mind_status(r, MIND_QUESTIONER);
+        return;
+    }
+    if(strcmp(aux, "inbox_status") == 0) {
+        read_inbox_status(r, axon);
+        return;
+    }
+    if(strcmp(aux, "minds_status") == 0) {
+        read_minds_status(r);
+        return;
+    }
+    if(strcmp(aux, "facts_status") == 0) {
+        read_consensus_status(r, axon);
+        return;
+    }
+
+    /* Original status files */
     if(strcmp(aux, AXON_STATUS) == 0) {
         read_status(r);
     } else if(strcmp(aux, AXON_CTL) == 0) {

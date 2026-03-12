@@ -18,11 +18,19 @@ typedef struct Cmdtab {
 } Cmdtab;
 
 static Cmdtab cmds[] = {
-    { CMD_ADD_ENTRY,  "add_entry",  2 },
-    { CMD_ADD_SOURCE, "add_source", 1 },
-    { CMD_SEARCH,     "search",     1 },
-    { CMD_STATUS,     "status",     0 },
-    { CMD_SYNC,       "sync",       0 },
+    { CMD_ADD_ENTRY,     "add_entry",     2 },
+    { CMD_ADD_SOURCE,    "add_source",    1 },
+    { CMD_SEARCH,        "search",        1 },
+    { CMD_STATUS,        "status",        0 },
+    { CMD_SYNC,          "sync",          0 },
+
+    /* Multi-mind inbox processing */
+    { CMD_PROCESS_INBOX, "process_inbox", 0 },
+    { CMD_PROCESS_FILE,  "process_file",  1 },
+    { CMD_MIND_ENABLE,   "mind_enable",   1 },
+    { CMD_MIND_DISABLE,  "mind_disable",  1 },
+    { CMD_MIND_STATUS,   "mind_status",   0 },
+
     { 0, nil, 0 }
 };
 
@@ -33,6 +41,12 @@ extern void handle_add_entry(Axon *axon, char *title, char *content);
 extern void handle_add_source(Axon *axon, char *path);
 extern void handle_search(Axon *axon, char *query);
 extern void handle_sync(Axon *axon);
+
+/* Multi-mind inbox processing handlers */
+extern void handle_process_inbox(Axon *axon);
+extern void handle_process_file(Axon *axon, char *path);
+extern void handle_mind_enable(Axon *axon, char *mind_name);
+extern void handle_mind_disable(Axon *axon, char *mind_name);
 
 /*
  * Write to control file
@@ -108,6 +122,52 @@ write_ctl(Req *r, Axon *axon)
     case CMD_SYNC:
         /* Sync to disk */
         handle_sync(axon);
+        r->ofcall.count = r->ifcall.count;
+        respond(r, nil);
+        break;
+
+    case CMD_PROCESS_INBOX:
+        /* Process all files in inbox/incoming */
+        handle_process_inbox(axon);
+        r->ofcall.count = r->ifcall.count;
+        respond(r, nil);
+        break;
+
+    case CMD_PROCESS_FILE:
+        /* Process a specific file */
+        if(cb->nf < 2) {
+            respondcmderror(r, cb, "usage: process_file path");
+            break;
+        }
+        handle_process_file(axon, cb->f[1]);
+        r->ofcall.count = r->ifcall.count;
+        respond(r, nil);
+        break;
+
+    case CMD_MIND_ENABLE:
+        /* Enable a specific mind */
+        if(cb->nf < 2) {
+            respondcmderror(r, cb, "usage: mind_enable name");
+            break;
+        }
+        handle_mind_enable(axon, cb->f[1]);
+        r->ofcall.count = r->ifcall.count;
+        respond(r, nil);
+        break;
+
+    case CMD_MIND_DISABLE:
+        /* Disable a specific mind */
+        if(cb->nf < 2) {
+            respondcmderror(r, cb, "usage: mind_disable name");
+            break;
+        }
+        handle_mind_disable(axon, cb->f[1]);
+        r->ofcall.count = r->ifcall.count;
+        respond(r, nil);
+        break;
+
+    case CMD_MIND_STATUS:
+        /* Status is read via /minds/status file */
         r->ofcall.count = r->ifcall.count;
         respond(r, nil);
         break;

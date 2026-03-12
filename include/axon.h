@@ -16,6 +16,13 @@ typedef struct Entry Entry;
 typedef struct Fact Fact;
 typedef struct Citation Citation;
 typedef struct SearchResult SearchResult;
+typedef struct Mind Mind;
+typedef struct MindResult MindResult;
+typedef struct MindFact MindFact;
+typedef struct ConsensusFact ConsensusFact;
+typedef struct Contradiction Contradiction;
+typedef struct FactStore FactStore;
+typedef struct FactIndex FactIndex;
 
 /*
  * Citation - Reference to a source document
@@ -106,5 +113,23 @@ Axon* axon_init(const char *data_path);
 void axon_cleanup(Axon *axon);
 int axon_add_entry(Axon *axon, Entry *e);
 Entry* axon_find_entry(Axon *axon, const char *title);
+
+/*
+ * Multi-mind extraction
+ */
+#include "minds.h"
+Mind** axon_get_minds(Axon *axon, int *nminds);
+int axon_process_entry_with_minds(Axon *axon, Entry *e);
+MindResult** axon_extract_from_all_minds(Axon *axon, Entry *e, int *nresults);
+int axon_build_consensus(Axon *axon, MindResult **results, int nresults);
+
+/*
+ * Fact storage and querying
+ */
+#include "facts.h"
+FactStore* axon_get_fact_store(Axon *axon);
+int axon_query_facts(Axon *axon, FactQuery *query, void **results, int *nresults);
+int axon_store_mind_facts(Axon *axon, MindResult *result);
+int axon_store_consensus_facts(Axon *axon, ConsensusFact **facts, int nfacts);
 
 #endif /* _AXON_H_ */

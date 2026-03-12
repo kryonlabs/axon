@@ -31,6 +31,13 @@ enum {
     CMD_SEARCH,
     CMD_STATUS,
     CMD_SYNC,
+
+    /* Multi-mind inbox processing commands */
+    CMD_PROCESS_INBOX,      /* Process all files in inbox/incoming */
+    CMD_PROCESS_FILE,       /* Process a specific file */
+    CMD_MIND_ENABLE,        /* Enable a specific mind */
+    CMD_MIND_DISABLE,       /* Disable a specific mind */
+    CMD_MIND_STATUS,        /* Get mind status */
 };
 
 /*
@@ -60,5 +67,19 @@ void handle_add_entry(Axon *axon, char *title, char *content);
 void handle_add_source(Axon *axon, char *path);
 void handle_search(Axon *axon, char *query);
 void handle_sync(Axon *axon);
+
+/* Multi-mind inbox processing handlers */
+void handle_process_inbox(Axon *axon);
+void handle_process_file(Axon *axon, char *path);
+void handle_mind_enable(Axon *axon, char *mind_name);
+void handle_mind_disable(Axon *axon, char *mind_name);
+
+/*
+ * Status file handlers
+ */
+void read_mind_status(Req *r, MindType mind_type);
+void read_inbox_status(Req *r, Axon *axon);
+void read_minds_status(Req *r);
+void read_consensus_status(Req *r, Axon *axon);
 
 #endif /* _AXONFS_H_ */
