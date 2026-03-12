@@ -1,0 +1,152 @@
+AXON: Encyclopedia Filesystem for TaijiOS
+
+A file-based AI system focused on transparency and self-documentation. AXON
+implements a knowledge base exposed through the 9P protocol where entries,
+citations, and search are all accessed as file operations.
+
+OVERVIEW
+
+AXON provides a transparent, file-based encyclopedia following Plan 9's
+"everything is a file" philosophy:
+
+    9P Filesystem       - Complete encyclopedia exposed via 9P
+    Entry Management    - Create, read, update knowledge entries
+    Search              - Full-text search via file operations
+    Citation Tracking   - Track sources and provenance
+    Memory Systems      - Episodic, semantic, procedural memory
+    Document Ingestion  - Parse txt, md, pdf; extract facts
+
+Architecture:
+
+    ┌───────────────────────────────────────────────┐
+    │              AXON Server                      │
+    │  • Encyclopedia  • Search  • Memory           │
+    │  • Ingest Pipeline  • Citation Tracking       │
+    └───────────────────┬───────────────────────────┘
+                        │ 9P/TCP
+                        ↓
+                ┌───────────────┐
+                │   Marrow      │
+                │  /mnt/axon    │
+                └───────────────┘
+
+QUICK START
+
+Build and run:
+
+    mk axon-build
+    ./bin/axon -p 17020 -d ./axon/data
+
+Interact via filesystem:
+
+    9p -a localhost!17020 mount /mnt/axon
+    cat /mnt/axon/status
+    echo "add_entry 'Title' 'Content...'" > /mnt/axon/ctl
+    echo "search term" > /mnt/axon/encyclopedia/search/query
+    cat /mnt/axon/encyclopedia/search/results
+
+FILESYSTEM LAYOUT
+
+/axon/
+├── ctl                   # Control file (write commands)
+├── status                # Status information (read)
+├── encyclopedia/
+│   ├── entries/          # Knowledge entries
+│   ├── search/
+│   │   ├── query        # Write: search query
+│   │   └── results      # Read: search results
+│   ├── confidence/       # Confidence scores
+│   ├── contradictions/   # Unresolved conflicts
+│   └── sources/          # Source documents
+├── memory/
+│   ├── episodic/         # Conversation history
+│   ├── semantic/         # Facts and entities
+│   └── procedural/       # Learned skills
+└── ingest/               # Document ingestion
+    ├── queue             # Queue of documents to process
+    ├── status            # Ingestion status
+    └── sources/          # Registered sources
+
+CONTROL COMMANDS
+
+Write commands to /ctl:
+
+    add_entry <title> <content>    - Create new entry
+    add_source <path>              - Add document source
+    search <query>                 - Search entries
+    status                         - Get status info
+    sync                           - Sync to disk
+
+COMPONENTS
+
+lib/encyclopedia/    - Core encyclopedia functionality
+lib/fs/             - 9P filesystem implementation
+lib/ingest/         - Document ingestion pipeline
+lib/memory/         - Memory systems
+cmd/axon/           - Main server executable
+include/            - Public headers
+data/               - Runtime data storage
+
+BUILD
+
+Requires TaijiOS toolchain (Plan 9 compilers):
+
+    mk toolchain      - Build toolchain first
+    mk axon-build     - Build AXON module
+    mk all           - Build all TaijiOS components
+
+Binary: bin/axon
+
+CONFIGURATION
+
+Command-line options:
+
+    -a address       - Address to bind to (default: all interfaces)
+    -p port          - Port to listen on (default: 17020)
+    -d datadir       - Data directory path (default: ./data)
+
+DATA FORMAT
+
+Entries are stored as markdown files with metadata:
+
+    # Title
+
+    Confidence: 0.95
+
+    Entry content here...
+
+EXAMPLES
+
+Start AXON:
+
+    ./bin/axon
+
+Search for entries:
+
+    echo "Eiffel" > /mnt/axon/encyclopedia/search/query
+    cat /mnt/axon/encyclopedia/search/results
+
+Read an entry:
+
+    cat /mnt/axon/encyclopedia/entries/Eiffel_Tower
+
+Use standard tools:
+
+    grep -r "Paris" /mnt/axon/encyclopedia/entries/
+    find /mnt/axon/encyclopedia/confidence -type f | xargs cat
+
+INTEGRATION
+
+AXON integrates with Marrow's service registry for automatic discovery.
+Register as a service for other TaijiOS components to mount.
+
+FUTURE PHASES
+
+    Document Ingestion - PDF parsing, fact extraction
+    Semantic Memory    - Entity extraction, knowledge graph
+    Episodic Memory    - Conversation storage
+    Self-Documentation - Automatic change logging
+    Contradiction Detection
+    Inference Integration
+    Streaming Updates
+    Kryon Integration   - GUI visualization

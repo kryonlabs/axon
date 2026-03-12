@@ -32,6 +32,7 @@ LIB=$BUILD/libaxon.a
 TARGET=$BIN/axon
 
 # Source files by module
+AXON_CORE=axon
 AXON_ENCYCLOPEDIA=encyclopedia/entry encyclopedia/fact encyclopedia/citation \
                   encyclopedia/search encyclopedia/index encyclopedia/consensus
 AXON_FS=fs/tree fs/ops fs/handlers fs/files fs/ctl
@@ -39,7 +40,8 @@ AXON_INGEST=ingest/parser ingest/extractor ingest/pipeline
 AXON_MEMORY=memory/episodic memory/semantic memory/procedural
 
 # All objects
-OFILES=${AXON_ENCYCLOPEDIA:%=$BUILD/%.$O} \
+OFILES=${AXON_CORE:%=$BUILD/%.$O} \
+       ${AXON_ENCYCLOPEDIA:%=$BUILD/%.$O} \
        ${AXON_FS:%=$BUILD/%.$O} \
        ${AXON_INGEST:%=$BUILD/%.$O} \
        ${AXON_MEMORY:%=$BUILD/%.$O}
@@ -61,6 +63,9 @@ $TARGET: cmd/axon/main.c $LIB $LIB9_LIB
 	$LD $CFLAGS -I$INCLUDE -I$SRC -I$LIB9_INCLUDE cmd/axon/main.c -L$BUILD -laxon -l9 -o $target $LDFLAGS
 
 # Compile rules
+$BUILD/%.$O: $SRC/%.c
+	$CC $CFLAGS -I$INCLUDE -I$SRC -c $prereq -o $target
+
 $BUILD/encyclopedia/%.$O: $SRC/encyclopedia/%.c
 	$CC $CFLAGS -I$INCLUDE -I$SRC -c $prereq -o $target
 
