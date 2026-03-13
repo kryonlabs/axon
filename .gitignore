@@ -1,0 +1,31 @@
+# Build outputs
+build/
+bin/
+
+# Object files
+*.o
+*.a
+
+# Temporary files
+*~
+*.tmp
+*.bak
+
+# Editor files
+*.swp
+*.swo
+.*.sw.*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test data
+/tmp/test*
+
+# Logs
+*.log
+
+# Local configuration (keep examples)
+data/llm/llm.conf
+!data/llm/llm.conf.example

@@ -31,6 +31,12 @@ static Cmdtab cmds[] = {
     { CMD_MIND_DISABLE,  "mind_disable",  1 },
     { CMD_MIND_STATUS,   "mind_status",   0 },
 
+    /* LLM configuration commands */
+    { CMD_LLM_SET_PROVIDER, "llm_set_provider", 1 },
+    { CMD_LLM_TEST,         "llm_test",          0 },
+    { CMD_LLM_SET_MODEL,    "llm_set_model",     2 },
+    { CMD_LLM_STATUS,       "llm_status",        0 },
+
     { 0, nil, 0 }
 };
 
@@ -47,6 +53,12 @@ extern void handle_process_inbox(Axon *axon);
 extern void handle_process_file(Axon *axon, char *path);
 extern void handle_mind_enable(Axon *axon, char *mind_name);
 extern void handle_mind_disable(Axon *axon, char *mind_name);
+
+/* LLM configuration handlers */
+extern void handle_llm_set_provider(Axon *axon, char *provider_name);
+extern void handle_llm_test(Axon *axon);
+extern void handle_llm_set_model(Axon *axon, char *mind_name, char *model);
+extern void handle_llm_status(Axon *axon);
 
 /*
  * Write to control file
@@ -168,6 +180,41 @@ write_ctl(Req *r, Axon *axon)
 
     case CMD_MIND_STATUS:
         /* Status is read via /minds/status file */
+        r->ofcall.count = r->ifcall.count;
+        respond(r, nil);
+        break;
+
+    case CMD_LLM_SET_PROVIDER:
+        /* Set default LLM provider */
+        if(cb->nf < 2) {
+            respondcmderror(r, cb, "usage: llm_set_provider provider");
+            break;
+        }
+        handle_llm_set_provider(axon, cb->f[1]);
+        r->ofcall.count = r->ifcall.count;
+        respond(r, nil);
+        break;
+
+    case CMD_LLM_TEST:
+        /* Test LLM connection */
+        handle_llm_test(axon);
+        r->ofcall.count = r->ifcall.count;
+        respond(r, nil);
+        break;
+
+    case CMD_LLM_SET_MODEL:
+        /* Set model for specific mind */
+        if(cb->nf < 3) {
+            respondcmderror(r, cb, "usage: llm_set_model mind provider");
+            break;
+        }
+        handle_llm_set_model(axon, cb->f[1], cb->f[2]);
+        r->ofcall.count = r->ifcall.count;
+        respond(r, nil);
+        break;
+
+    case CMD_LLM_STATUS:
+        /* Status is read via /llm/status file */
         r->ofcall.count = r->ifcall.count;
         respond(r, nil);
         break;

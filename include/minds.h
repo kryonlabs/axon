@@ -73,6 +73,13 @@ typedef struct Mind {
     int enabled;             /* Whether this mind is active */
 
     /*
+     * LLM backend for this mind
+     * Can be nil if using fallback extraction
+     */
+    struct LLMBackend *llm;
+    char *model_override;    /* Specific model override for this mind */
+
+    /*
      * Extract facts from an entry
      * Returns allocated MindResult that must be freed
      */

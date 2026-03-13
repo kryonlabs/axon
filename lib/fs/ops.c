@@ -24,6 +24,11 @@ extern void read_inbox_status(Req *r, Axon *axon);
 extern void read_minds_status(Req *r);
 extern void read_consensus_status(Req *r, Axon *axon);
 
+/* LLM status handlers */
+extern void read_llm_status(Req *r);
+extern void read_llm_config(Req *r);
+extern void write_llm_config(Req *r, Axon *axon);
+
 /*
  * Attach handler
  */
@@ -118,6 +123,16 @@ fs_read(Req *r)
         return;
     }
 
+    /* LLM status and config files */
+    if(strcmp(aux, AXON_LLM_STATUS) == 0) {
+        read_llm_status(r);
+        return;
+    }
+    if(strcmp(aux, AXON_LLM_CONFIG) == 0) {
+        read_llm_config(r);
+        return;
+    }
+
     /* Original status files */
     if(strcmp(aux, AXON_STATUS) == 0) {
         read_status(r);
@@ -177,6 +192,12 @@ fs_write(Req *r)
     } else if(strcmp(aux, AXON_QUERY) == 0) {
         if(axon != nil) {
             write_search_query(r, axon);
+        } else {
+            respond(r, "no context");
+        }
+    } else if(strcmp(aux, AXON_LLM_CONFIG) == 0) {
+        if(axon != nil) {
+            write_llm_config(r, axon);
         } else {
             respond(r, "no context");
         }

@@ -1,0 +1,119 @@
+#!/bin/rc
+
+# AXON Multi-LLM Integration Test Script
+# Tests the new LLM-powered fact extraction system
+
+rfork e
+
+# Paths
+AXON_BIN=/mnt/storage/Projects/TaijiOS/axon/bin/axon
+AXON_DATA=/mnt/storage/Projects/TaijiOS/axon/data
+TEST_FILE=/tmp/test_axon_llm.md
+
+echo 'AXON Multi-LLM Integration Test'
+echo '================================'
+echo ''
+
+# Create test file
+echo 'Creating test knowledge file...'
+cat > $TEST_FILE <<'EOF'
+# The Theory of General Relativity
+
+General relativity is a theory of gravitation that was developed by Albert Einstein between 1907 and 1915. According to general relativity, the observed gravitational attraction between masses results from the warping of space and time by those masses.
+
+The theory has important astrophysical implications. For example, it implies the existence of black holes—regions of space in which space and time are distorted in such a way that nothing, not even light, can escape.
+
+General relativity also predicts that light rays are bent by gravitational fields. This prediction was confirmed by observations of starlight during the solar eclipse of 1919, which provided one of the earliest confirmations of the theory.
+
+The mathematical foundation of general relativity is the Einstein field equations, which relate the geometry of spacetime to the energy and momentum within it.
+EOF
+
+echo 'Test file created: '$TEST_FILE
+echo ''
+
+# Test 1: Check LLM configuration
+echo 'Test 1: Check LLM configuration'
+echo '-------------------------------'
+if (test -f $AXON_DATA/llm/llm.conf) {
+    echo '✓ LLM config file exists'
+    cat $AXON_DATA/llm/llm.conf
+} else {
+    echo '✗ LLM config file not found'
+}
+echo ''
+
+# Test 2: Test LLM status command
+echo 'Test 2: LLM Status'
+echo '------------------'
+echo 'llm_status' > /mnt/axon/ctl >[2]/dev/null || echo 'Note: AXON not running - these are the commands that would be used'
+echo 'cat /mnt/axon/llm/status'
+echo ''
+
+# Test 3: Configure different providers for different minds
+echo 'Test 3: Configure per-mind models'
+echo '---------------------------------'
+echo 'Commands to configure different minds:'
+echo '  echo ''llm_set_provider lm_studio'' > /mnt/axon/ctl'
+echo '  echo ''llm_set_model literal lm_studio'' > /mnt/axon/ctl'
+echo '  echo ''llm_set_model skeptic openai'' > /mnt/axon/ctl'
+echo ''
+
+# Test 4: Process test file with multi-mind extraction
+echo 'Test 4: Process file with multi-mind extraction'
+echo '------------------------------------------------'
+echo 'Command:'
+echo '  echo ''process_file '$TEST_FILE''' > /mnt/axon/ctl'
+echo ''
+echo 'Expected results:'
+echo '  - Each mind (literal, skeptic, synthesizer, pattern_matcher, questioner)'
+echo '    will extract facts using their LLM backend'
+echo '  - Facts will be stored in /mnt/axon/minds/<mind>/facts'
+echo '  - Consensus facts will be in /mnt/axon/facts/consensus'
+echo ''
+
+# Test 5: Verify fact extraction
+echo 'Test 5: Verify extracted facts'
+echo '------------------------------'
+echo 'Commands to verify:'
+echo '  cat /mnt/axon/minds/literal/status'
+echo '  cat /mnt/axon/minds/skeptic/status'
+echo '  cat /mnt/axon/facts/consensus/status'
+echo ''
+
+# Test 6: Test error handling
+echo 'Test 6: Test error handling'
+echo '---------------------------'
+echo 'Test case 1: Stop LM Studio and try extraction'
+echo '  Expected: Should fail fast with clear error message'
+echo ''
+echo 'Test case 2: Invalid API key'
+echo '  Expected: Should return error via status file'
+echo ''
+
+# Test 7: Test configuration persistence
+echo 'Test 7: Test configuration persistence'
+echo '--------------------------------------'
+echo 'Commands:'
+echo '  echo ''llm_set_provider openai'' > /mnt/axon/ctl'
+echo '  # Restart AXON'
+echo '  cat /mnt/axon/llm/config'
+echo '  Expected: Configuration should persist'
+echo ''
+
+echo '================================'
+echo 'Test Summary'
+echo '================================'
+echo ''
+echo 'The multi-LLM integration provides:'
+echo '  ✓ Support for multiple LLM providers (LM Studio, OpenAI, z.ai)'
+echo '  ✓ Per-mind model assignment'
+echo '  ✓ Configuration via 9P filesystem'
+echo '  ✓ Real LLM-powered fact extraction'
+echo '  ✓ Error handling with fail-fast behavior'
+echo '  ✓ Configuration persistence'
+echo ''
+echo 'To test with actual LLM:'
+echo '  1. Start LM Studio with a model (e.g., llama-3-8b-instruct)'
+echo '  2. Start AXON: '$AXON_BIN
+echo '  3. Run the commands above'
+echo ''

@@ -1,0 +1,36 @@
+# AXON LLM Configuration
+# This file configures the LLM providers for the multi-mind fact extraction system
+
+[global]
+default_provider = lm_studio
+
+[provider.lm_studio]
+endpoint = http://localhost:1234/v1
+api_key =
+model = llama-3-8b-instruct
+temperature = 0.7
+timeout_ms = 30000
+max_tokens = 4096
+
+[provider.openai]
+endpoint = https://api.openai.com/v1
+api_key = sk-your-key-here
+model = gpt-4o-mini
+temperature = 0.7
+timeout_ms = 30000
+max_tokens = 4096
+
+[provider.z_ai]
+endpoint = https://api.z.ai/v1
+api_key = your-zai-key-here
+model = zai-default
+temperature = 0.7
+timeout_ms = 30000
+max_tokens = 4096
+
+[minds]
+literal = lm_studio
+skeptic = lm_studio
+synthesizer = lm_studio
+pattern_matcher = lm_studio
+questioner = lm_studio

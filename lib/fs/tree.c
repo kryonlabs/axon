@@ -45,6 +45,9 @@
 #define AXON_FACTS_STATUS       "facts_status"
 #define AXON_INBOX_STATUS       "inbox_status"
 #define AXON_CONTRADICTIONS_DIR "contradictions_dir"
+#define AXON_LLM_DIR            "llm_dir"
+#define AXON_LLM_CONFIG         "llm_config"
+#define AXON_LLM_STATUS         "llm_status"
 
 /*
  * Create the AXON filesystem tree
@@ -76,6 +79,11 @@ axon_create_tree(Axon *axon)
     facts = createfile(root, "facts", nil, 0755 | DMDIR, axon);
     inbox = createfile(root, "inbox", nil, 0755 | DMDIR, axon);
     contradictions = createfile(root, "contradictions", nil, 0755 | DMDIR, AXON_CONTRADICTIONS_DIR);
+
+    /* Create LLM configuration directory */
+    File *llm_dir = createfile(root, "llm", nil, 0755 | DMDIR, AXON_LLM_DIR);
+    createfile(llm_dir, "config", nil, 0666, AXON_LLM_CONFIG);
+    createfile(llm_dir, "status", nil, 0444, AXON_LLM_STATUS);
 
     /* Create legacy directories for backward compatibility */
     encyclopedia = createfile(root, "encyclopedia", nil, 0755 | DMDIR, axon);

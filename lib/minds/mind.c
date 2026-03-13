@@ -6,6 +6,14 @@
 #include <lib9.h>
 #include "axon.h"
 #include "minds.h"
+#include "llm.h"
+
+/*
+ * Forward declarations for LLM response parsing
+ */
+extern MindResult* parse_llm_response(char *response_text, MindType mind_type,
+                                      Entry *source_entry);
+extern char* build_extraction_prompt(Mind *mind, Entry *entry);
 
 /*
  * Default prompts for each mind type
@@ -62,18 +70,33 @@ mind_get_prompt_questioner(void)
 static MindResult*
 literal_extract(Mind *mind, Entry *entry)
 {
-    MindResult *result;
-    MindFact *fact;
-    char *content, *line;
-    int i, nlines;
-    char **lines;
+    MindResult *result = nil;
+    LLMResponse *llm_resp;
+    char *prompt;
 
     if(mind == nil || entry == nil)
         return nil;
 
-    /* Simple text-based extraction for Phase 1 */
-    /* TODO: Phase 2 will use llama.cpp for actual LLM extraction */
+    /* Try LLM extraction first */
+    if(mind->llm != nil) {
+        prompt = build_extraction_prompt(mind, entry);
+        llm_resp = llm_complete(mind->llm,
+                               "You are a literal fact extractor. Extract every factual claim exactly as stated.",
+                               prompt);
 
+        if(llm_resp != nil && llm_resp->success) {
+            result = parse_llm_response(llm_resp->text, MIND_LITERAL, entry);
+            free(prompt);
+            llm_response_free(llm_resp);
+            return result;
+        }
+
+        free(prompt);
+        if(llm_resp != nil)
+            llm_response_free(llm_resp);
+    }
+
+    /* Fallback to simple regex extraction */
     result = emalloc9p(sizeof(MindResult));
     result->mind_type = MIND_LITERAL;
     result->source_entry = entry;
@@ -84,95 +107,50 @@ literal_extract(Mind *mind, Entry *entry)
     result->avg_confidence = 0.0;
     result->processing_time_ms = 0;
 
-    /* Split content into lines */
-    content = entry->content;
-    nlines = 0;
-    lines = nil;
+    /* Simple "X is Y" pattern extraction as fallback */
+    char *content = entry->content;
+    char *line = content;
 
-    /* Count lines */
-    line = content;
     while(line != nil && *line != '\0') {
         char *newline = strchr(line, '\n');
-        nlines++;
+        char *is_pos = strstr(line, " is ");
+
+        if(is_pos != nil && (newline == nil || is_pos < newline)) {
+            int subject_len = is_pos - line;
+            char *subject = emalloc9p(subject_len + 1);
+            memcpy(subject, line, subject_len);
+            subject[subject_len] = '\0';
+
+            char *object_start = is_pos + 4;
+            int object_len = 0;
+            if(newline != nil)
+                object_len = newline - object_start;
+            else
+                object_len = strlen(object_start);
+
+            char *object = emalloc9p(object_len + 1);
+            memcpy(object, object_start, object_len);
+            object[object_len] = '\0';
+
+            MindFact *fact = mind_fact_create(subject, "is", object);
+            if(fact != nil) {
+                fact->confidence = mind->default_confidence;
+                fact->explanation = estrdup9p("Extracted by literal mind (fallback)");
+                fact->evidence = estrdup9p(line);
+
+                result->nfacts++;
+                result->facts = erealloc9p(result->facts,
+                    result->nfacts * sizeof(MindFact*));
+                result->facts[result->nfacts - 1] = fact;
+            }
+
+            free(subject);
+            free(object);
+        }
+
         if(newline == nil)
             break;
         line = newline + 1;
-    }
-
-    if(nlines > 0) {
-        lines = emalloc9p(nlines * sizeof(char*));
-
-        /* Extract lines */
-        i = 0;
-        line = content;
-        while(line != nil && *line != '\0' && i < nlines) {
-            char *newline = strchr(line, '\n');
-            if(newline != nil) {
-                int len = newline - line;
-                lines[i] = emalloc9p(len + 1);
-                memcpy(lines[i], line, len);
-                lines[i][len] = '\0';
-                line = newline + 1;
-            } else {
-                lines[i] = estrdup9p(line);
-                line = nil;
-            }
-            i++;
-        }
-
-        /* Extract facts from lines (very basic for Phase 1) */
-        /* Look for sentences like "X is Y" or "X has property Y" */
-        for(i = 0; i < nlines; i++) {
-            char *is_pos, *has_pos, *are_pos;
-            char *subject, *predicate, *object;
-
-            line = lines[i];
-
-            /* Look for "is" */
-            is_pos = strstr(line, " is ");
-            if(is_pos != nil) {
-                int subject_len = is_pos - line;
-                subject = emalloc9p(subject_len + 1);
-                memcpy(subject, line, subject_len);
-                subject[subject_len] = '\0';
-
-                object = estrdup9p(is_pos + 4);
-                predicate = estrdup9p("is");
-
-                fact = mind_fact_create(subject, predicate, object);
-                if(fact != nil) {
-                    fact->confidence = mind->default_confidence;
-                    fact->flags = 0;
-                    fact->explanation = estrdup9p("Extracted by literal mind");
-                    fact->evidence = estrdup9p(line);
-
-                    /* Add to result */
-                    result->nfacts++;
-                    result->facts = erealloc9p(result->facts,
-                        result->nfacts * sizeof(MindFact*));
-                    result->facts[result->nfacts - 1] = fact;
-                }
-
-                free(subject);
-                free(predicate);
-                free(object);
-            }
-        }
-
-        /* Free lines */
-        for(i = 0; i < nlines; i++) {
-            free(lines[i]);
-        }
-        free(lines);
-    }
-
-    /* Calculate average confidence */
-    if(result->nfacts > 0) {
-        double sum = 0.0;
-        for(i = 0; i < result->nfacts; i++) {
-            sum += result->facts[i]->confidence;
-        }
-        result->avg_confidence = sum / result->nfacts;
     }
 
     return result;
@@ -181,26 +159,45 @@ literal_extract(Mind *mind, Entry *entry)
 static MindResult*
 skeptic_extract(Mind *mind, Entry *entry)
 {
-    MindResult *result;
+    MindResult *result = nil;
+    LLMResponse *llm_resp;
+    char *prompt;
 
     if(mind == nil || entry == nil)
         return nil;
 
-    /* Skeptic is similar to literal but with lower confidence */
+    /* Try LLM extraction first */
+    if(mind->llm != nil) {
+        prompt = build_extraction_prompt(mind, entry);
+        llm_resp = llm_complete(mind->llm,
+                               "You are a skeptic. Extract claims but question everything. Flag what needs verification. Use low confidence scores (0.2-0.6).",
+                               prompt);
+
+        if(llm_resp != nil && llm_resp->success) {
+            result = parse_llm_response(llm_resp->text, MIND_SKEPTIC, entry);
+            free(prompt);
+            llm_response_free(llm_resp);
+            return result;
+        }
+
+        free(prompt);
+        if(llm_resp != nil)
+            llm_response_free(llm_resp);
+    }
+
+    /* Fallback to literal extraction with lower confidence */
     result = literal_extract(mind, entry);
     if(result != nil) {
         result->mind_type = MIND_SKEPTIC;
 
-        /* Lower all confidences and add verification flags */
         for(int i = 0; i < result->nfacts; i++) {
-            result->facts[i]->confidence *= 0.5;  /* Reduce confidence */
+            result->facts[i]->confidence *= 0.5;
             result->facts[i]->flags |= MFLAG_NEEDS_VERIFICATION;
             if(result->facts[i]->explanation != nil)
                 free(result->facts[i]->explanation);
-            result->facts[i]->explanation = estrdup9p("Needs verification");
+            result->facts[i]->explanation = estrdup9p("Needs verification (fallback)");
         }
 
-        /* Recalculate average */
         if(result->nfacts > 0) {
             double sum = 0.0;
             for(int i = 0; i < result->nfacts; i++) {
@@ -216,22 +213,42 @@ skeptic_extract(Mind *mind, Entry *entry)
 static MindResult*
 synthesizer_extract(Mind *mind, Entry *entry)
 {
-    MindResult *result;
+    MindResult *result = nil;
+    LLMResponse *llm_resp;
+    char *prompt;
 
     if(mind == nil || entry == nil)
         return nil;
 
-    /* For Phase 1, similar to literal but marks relationships */
+    /* Try LLM extraction first */
+    if(mind->llm != nil) {
+        prompt = build_extraction_prompt(mind, entry);
+        llm_resp = llm_complete(mind->llm,
+                               "You are a synthesizer. Extract facts and how they relate to existing knowledge. Look for connections, causes, and effects.",
+                               prompt);
+
+        if(llm_resp != nil && llm_resp->success) {
+            result = parse_llm_response(llm_resp->text, MIND_SYNTHESIZER, entry);
+            free(prompt);
+            llm_response_free(llm_resp);
+            return result;
+        }
+
+        free(prompt);
+        if(llm_resp != nil)
+            llm_response_free(llm_resp);
+    }
+
+    /* Fallback */
     result = literal_extract(mind, entry);
     if(result != nil) {
         result->mind_type = MIND_SYNTHESIZER;
 
-        /* Mark all as relationships */
         for(int i = 0; i < result->nfacts; i++) {
             result->facts[i]->flags |= MFLAG_RELATIONSHIP;
             if(result->facts[i]->explanation != nil)
                 free(result->facts[i]->explanation);
-            result->facts[i]->explanation = estrdup9p("Relationship identified");
+            result->facts[i]->explanation = estrdup9p("Relationship identified (fallback)");
         }
     }
 
@@ -241,22 +258,42 @@ synthesizer_extract(Mind *mind, Entry *entry)
 static MindResult*
 pattern_matcher_extract(Mind *mind, Entry *entry)
 {
-    MindResult *result;
+    MindResult *result = nil;
+    LLMResponse *llm_resp;
+    char *prompt;
 
     if(mind == nil || entry == nil)
         return nil;
 
-    /* For Phase 1, similar to literal but marks principles */
+    /* Try LLM extraction first */
+    if(mind->llm != nil) {
+        prompt = build_extraction_prompt(mind, entry);
+        llm_resp = llm_complete(mind->llm,
+                               "You are a pattern matcher. Extract underlying principles, laws, theories, formulas, and systematic relationships.",
+                               prompt);
+
+        if(llm_resp != nil && llm_resp->success) {
+            result = parse_llm_response(llm_resp->text, MIND_PATTERN_MATCHER, entry);
+            free(prompt);
+            llm_response_free(llm_resp);
+            return result;
+        }
+
+        free(prompt);
+        if(llm_resp != nil)
+            llm_response_free(llm_resp);
+    }
+
+    /* Fallback */
     result = literal_extract(mind, entry);
     if(result != nil) {
         result->mind_type = MIND_PATTERN_MATCHER;
 
-        /* Mark all as principles */
         for(int i = 0; i < result->nfacts; i++) {
             result->facts[i]->flags |= MFLAG_PRINCIPLE;
             if(result->facts[i]->explanation != nil)
                 free(result->facts[i]->explanation);
-            result->facts[i]->explanation = estrdup9p("Pattern identified");
+            result->facts[i]->explanation = estrdup9p("Pattern identified (fallback)");
         }
     }
 
@@ -266,17 +303,37 @@ pattern_matcher_extract(Mind *mind, Entry *entry)
 static MindResult*
 questioner_extract(Mind *mind, Entry *entry)
 {
-    MindResult *result;
+    MindResult *result = nil;
+    LLMResponse *llm_resp;
+    char *prompt;
 
     if(mind == nil || entry == nil)
         return nil;
 
-    /* Questioner extracts facts but also generates questions */
+    /* Try LLM extraction first */
+    if(mind->llm != nil) {
+        prompt = build_extraction_prompt(mind, entry);
+        llm_resp = llm_complete(mind->llm,
+                               "You are a questioner. Identify what questions this entry does NOT answer. What's missing? What knowledge gaps exist?",
+                               prompt);
+
+        if(llm_resp != nil && llm_resp->success) {
+            result = parse_llm_response(llm_resp->text, MIND_QUESTIONER, entry);
+            free(prompt);
+            llm_response_free(llm_resp);
+            return result;
+        }
+
+        free(prompt);
+        if(llm_resp != nil)
+            llm_response_free(llm_resp);
+    }
+
+    /* Fallback */
     result = literal_extract(mind, entry);
     if(result != nil) {
         result->mind_type = MIND_QUESTIONER;
 
-        /* Generate some basic questions about gaps */
         result->nquestions = 3;
         result->questions = emalloc9p(result->nquestions * sizeof(char*));
         result->questions[0] = estrdup9p("What is the source of this information?");
@@ -305,6 +362,8 @@ mind_create(MindType type)
     mind->description = estrdup9p(mind_type_description(type));
     mind->prompt = estrdup9p(mind_type_prompt(type));
     mind->enabled = 1;
+    mind->llm = nil;
+    mind->model_override = nil;
     mind->cleanup = nil;  /* No cleanup needed for basic minds */
 
     /* Set default confidence and extraction function based on type */
@@ -347,6 +406,12 @@ mind_free(Mind *mind)
     free(mind->name);
     free(mind->description);
     free(mind->prompt);
+    free(mind->model_override);
+
+    /* Free LLM backend if present */
+    if(mind->llm != nil) {
+        llm_free(mind->llm);
+    }
 
     if(mind->cleanup != nil)
         mind->cleanup(mind);

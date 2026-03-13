@@ -38,6 +38,12 @@ enum {
     CMD_MIND_ENABLE,        /* Enable a specific mind */
     CMD_MIND_DISABLE,       /* Disable a specific mind */
     CMD_MIND_STATUS,        /* Get mind status */
+
+    /* LLM configuration commands */
+    CMD_LLM_SET_PROVIDER,   /* Set default LLM provider */
+    CMD_LLM_TEST,           /* Test LLM connection */
+    CMD_LLM_SET_MODEL,      /* Set model for specific mind */
+    CMD_LLM_STATUS,         /* Get LLM status */
 };
 
 /*
@@ -74,6 +80,12 @@ void handle_process_file(Axon *axon, char *path);
 void handle_mind_enable(Axon *axon, char *mind_name);
 void handle_mind_disable(Axon *axon, char *mind_name);
 
+/* LLM configuration handlers */
+void handle_llm_set_provider(Axon *axon, char *provider_name);
+void handle_llm_test(Axon *axon);
+void handle_llm_set_model(Axon *axon, char *mind_name, char *model);
+void handle_llm_status(Axon *axon);
+
 /*
  * Status file handlers
  */
@@ -81,5 +93,8 @@ void read_mind_status(Req *r, MindType mind_type);
 void read_inbox_status(Req *r, Axon *axon);
 void read_minds_status(Req *r);
 void read_consensus_status(Req *r, Axon *axon);
+void read_llm_status(Req *r);
+void read_llm_config(Req *r);
+void write_llm_config(Req *r, Axon *axon);
 
 #endif /* _AXONFS_H_ */

@@ -426,3 +426,118 @@ handle_mind_disable(Axon *axon, char *mind_name)
         mind_free(mind);
     }
 }
+
+/*
+ * LLM Configuration Handlers
+ */
+
+extern void llm_config_init(char *config_path);
+extern char* llm_get_status(void);
+extern char* llm_get_mind_status(MindType mind_type);
+extern char* llm_get_config(void);
+extern int llm_test_connection(void);
+extern int llm_set_mind_model(MindType mind_type, char *provider_name);
+
+/*
+ * Set default LLM provider
+ */
+void
+handle_llm_set_provider(Axon *axon, char *provider_name)
+{
+    /* TODO: Implement provider switching */
+    /* For now, this is a placeholder */
+    if(axon == nil || provider_name == nil)
+        return;
+}
+
+/*
+ * Test LLM connection
+ */
+void
+handle_llm_test(Axon *axon)
+{
+    if(axon == nil)
+        return;
+
+    int result = llm_test_connection();
+    /* Result is logged via status file */
+}
+
+/*
+ * Set model for specific mind
+ */
+void
+handle_llm_set_model(Axon *axon, char *mind_name, char *provider)
+{
+    MindType type;
+
+    if(axon == nil || mind_name == nil || provider == nil)
+        return;
+
+    type = mind_name_to_type(mind_name);
+    if(type == MIND_MAX)
+        return;
+
+    llm_set_mind_model(type, provider);
+}
+
+/*
+ * LLM status handler
+ */
+void
+handle_llm_status(Axon *axon)
+{
+    /* Status is read via /llm/status file */
+    if(axon == nil)
+        return;
+}
+
+/*
+ * Read LLM status file
+ */
+void
+read_llm_status(Req *r)
+{
+    char *status;
+
+    status = llm_get_status();
+    if(status == nil) {
+        readstr(r, "LLM not initialized\n");
+        return;
+    }
+
+    readstr(r, status);
+    free(status);
+}
+
+/*
+ * Read LLM config file
+ */
+void
+read_llm_config(Req *r)
+{
+    char *config;
+
+    config = llm_get_config();
+    if(config == nil) {
+        readstr(r, "# LLM Configuration\nprovider lm_studio\n");
+        return;
+    }
+
+    readstr(r, config);
+    free(config);
+}
+
+/*
+ * Write LLM config file
+ */
+void
+write_llm_config(Req *r, Axon *axon)
+{
+    /* TODO: Implement config writing */
+    if(axon == nil)
+        return;
+
+    r->ofcall.count = r->ifcall.count;
+    respond(r, nil);
+}
