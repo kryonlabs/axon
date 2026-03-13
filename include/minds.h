@@ -209,4 +209,18 @@ char* mind_type_description(MindType type);
 /* Get default prompt for mind type */
 char* mind_type_prompt(MindType type);
 
+/*
+ * LLM response parsing utilities
+ */
+
+/* Parse LLM response text into MindResult */
+MindResult* parse_llm_response(char *response_text, MindType mind_type,
+                               Entry *source_entry);
+
+/* Build extraction prompt for a mind */
+char* build_extraction_prompt(Mind *mind, Entry *entry);
+
+/* Format entry content for LLM prompt */
+char* format_entry_for_prompt(Entry *entry);
+
 #endif /* _MINDS_H_ */

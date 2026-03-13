@@ -7,6 +7,7 @@
 #include "axon.h"
 #include "minds.h"
 #include "llm.h"
+#include "llm_config.h"
 
 /*
  * Forward declarations for LLM response parsing
@@ -362,9 +363,11 @@ mind_create(MindType type)
     mind->description = estrdup9p(mind_type_description(type));
     mind->prompt = estrdup9p(mind_type_prompt(type));
     mind->enabled = 1;
-    mind->llm = nil;
     mind->model_override = nil;
     mind->cleanup = nil;  /* No cleanup needed for basic minds */
+
+    /* Get LLM backend for this mind from configuration */
+    mind->llm = llm_get_mind_backend(type);
 
     /* Set default confidence and extraction function based on type */
     switch(type) {

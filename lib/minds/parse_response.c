@@ -6,6 +6,7 @@
 #include <lib9.h>
 #include <ctype.h>
 #include "minds.h"
+#include "llm.h"
 
 /*
  * Parse a line in format: "subject | predicate | object | confidence"

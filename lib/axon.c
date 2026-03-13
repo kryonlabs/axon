@@ -7,6 +7,17 @@
 #include "axon.h"
 #include "minds.h"
 #include "facts.h"
+#include "llm_config.h"
+
+/*
+ * AXON-specific mind management
+ * Each AXON instance maintains its own set of minds with LLM backends
+ */
+
+typedef struct AxonMindState {
+    Mind **minds;
+    int nminds;
+} AxonMindState;
 
 /*
  * Initialize AXON
@@ -15,6 +26,7 @@ Axon*
 axon_init(const char *data_path)
 {
     Axon *axon;
+    char llm_config_path[512];
 
     if(data_path == nil)
         return nil;
@@ -52,11 +64,47 @@ axon_init(const char *data_path)
         (void)create(path, OREAD, 0755 | DMDIR);
         snprint(path, sizeof(path), "%s/facts", data_path);
         (void)create(path, OREAD, 0755 | DMDIR);
+        snprint(path, sizeof(path), "%s/facts/by_subject", data_path);
+        (void)create(path, OREAD, 0755 | DMDIR);
+        snprint(path, sizeof(path), "%s/facts/by_predicate", data_path);
+        (void)create(path, OREAD, 0755 | DMDIR);
+        snprint(path, sizeof(path), "%s/facts/consensus", data_path);
+        (void)create(path, OREAD, 0755 | DMDIR);
         snprint(path, sizeof(path), "%s/contradictions", data_path);
         (void)create(path, OREAD, 0755 | DMDIR);
         snprint(path, sizeof(path), "%s/inbox", data_path);
         (void)create(path, OREAD, 0755 | DMDIR);
+        snprint(path, sizeof(path), "%s/inbox/incoming", data_path);
+        (void)create(path, OREAD, 0755 | DMDIR);
+        snprint(path, sizeof(path), "%s/llm", data_path);
+        (void)create(path, OREAD, 0755 | DMDIR);
+
+        /* Create mind-specific directories */
+        snprint(path, sizeof(path), "%s/minds/literal", data_path);
+        (void)create(path, OREAD, 0755 | DMDIR);
+        snprint(path, sizeof(path), "%s/minds/literal/facts", data_path);
+        (void)create(path, OREAD, 0755 | DMDIR);
+        snprint(path, sizeof(path), "%s/minds/skeptic", data_path);
+        (void)create(path, OREAD, 0755 | DMDIR);
+        snprint(path, sizeof(path), "%s/minds/skeptic/facts", data_path);
+        (void)create(path, OREAD, 0755 | DMDIR);
+        snprint(path, sizeof(path), "%s/minds/synthesizer", data_path);
+        (void)create(path, OREAD, 0755 | DMDIR);
+        snprint(path, sizeof(path), "%s/minds/synthesizer/facts", data_path);
+        (void)create(path, OREAD, 0755 | DMDIR);
+        snprint(path, sizeof(path), "%s/minds/pattern_matcher", data_path);
+        (void)create(path, OREAD, 0755 | DMDIR);
+        snprint(path, sizeof(path), "%s/minds/pattern_matcher/facts", data_path);
+        (void)create(path, OREAD, 0755 | DMDIR);
+        snprint(path, sizeof(path), "%s/minds/questioner", data_path);
+        (void)create(path, OREAD, 0755 | DMDIR);
+        snprint(path, sizeof(path), "%s/minds/questioner/facts", data_path);
+        (void)create(path, OREAD, 0755 | DMDIR);
     }
+
+    /* Initialize LLM configuration */
+    snprint(llm_config_path, sizeof(llm_config_path), "%s/llm/llm.conf", data_path);
+    llm_config_init(llm_config_path);
 
     return axon;
 }
@@ -84,6 +132,9 @@ axon_cleanup(Axon *axon)
         next_f = f->next;
         fact_free(f);
     }
+
+    /* Cleanup LLM configuration */
+    llm_config_cleanup();
 
     free(axon->root_path);
     free(axon->last_query);

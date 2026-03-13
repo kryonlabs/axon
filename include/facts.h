@@ -175,4 +175,26 @@ char* fact_serialize_consensus_fact(ConsensusFact *fact);
 /* Parse a consensus fact from lines */
 ConsensusFact* fact_parse_consensus_fact(char **lines, int nlines);
 
+/*
+ * Mind runner functions (coordinate minds and fact storage)
+ */
+
+/* Process entry through all minds */
+MindResult** mind_runner_process_all(Entry *entry, int *nresults);
+
+/* Store results from a single mind */
+int mind_runner_store_mind_result(FactStore *store, MindResult *result);
+
+/* Store all mind results */
+int mind_runner_store_all_results(FactStore *store, MindResult **results, int nresults);
+
+/* Build consensus from mind results */
+ConsensusFact** mind_runner_build_consensus(MindResult **results, int nresults, int *nconsensus);
+
+/* Store consensus facts */
+int mind_runner_store_consensus(FactStore *store, ConsensusFact **consensus, int nconsensus);
+
+/* Find contradictions among mind results */
+int mind_runner_find_contradictions(MindResult **results, int nresults, FactStore *store);
+
 #endif /* _FACTS_H_ */
